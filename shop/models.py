@@ -48,29 +48,30 @@ class Comment(models.Model):
     )
     text = models.TextField()
 
+from django.db import models
+from django.conf import settings
 
 class Order(models.Model):
     STATUS_CHOICES = (
-        ('new', 'New'),
-        ('paid', 'Paid'),
-        ('sent', 'Sent'),
+        ('pending', 'Pending'),
         ('done', 'Done'),
+        ('cancelled', 'Cancelled'),
     )
 
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE
-    )
-    product = models.ForeignKey(
-        Product,
-        on_delete=models.CASCADE
-    )
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField()
-    status = models.CharField(
-        max_length=10,
-        choices=STATUS_CHOICES,
-        default='new'
-    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+
+    def save(self, *args, **kwargs):
+        if self.pk is None and self.status == 'done':
+            if self.product.quantity >= self.quantity:
+                self.product.quantity -= self.quantity
+                self.product.save()
+            else:
+                raise ValueError("Not enough product quantity")
+
+        super().save(*args, **kwargs)
 
 
 class ProductLike(models.Model):
